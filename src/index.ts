@@ -96,6 +96,7 @@ proxy.on('error', (err, req, res) => {
 });
 
 http.createServer((req, res) => {
+  console.log("HI");
   const parsed = new url.URL(`http://localhost${req.url!}`);
   console.log(parsed)
   if (parsed.pathname === '/health') {
