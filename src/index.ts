@@ -60,6 +60,7 @@ function incomingPathToProxyPath(path: string): string {
 
 proxy.on('proxyReq', (proxyReq, request, response, options) => {
   proxyReq.path = incomingPathToProxyPath(proxyReq.path);
+  console.log(incomingPathToProxyPath(proxyReq.path));
 
   // AZ CDN determines the bucket from the Host header
   proxyReq.setHeader('Host', TARGET_HOST);
@@ -96,6 +97,7 @@ proxy.on('error', (err, req, res) => {
 
 http.createServer((req, res) => {
   const parsed = new url.URL(`http://localhost${req.url!}`);
+  console.log(parsed)
   if (parsed.pathname === '/health') {
     return res.writeHead(200).end('Alive');
   }
