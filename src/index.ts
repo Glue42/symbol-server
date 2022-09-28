@@ -5,7 +5,7 @@ import LRU from 'lru-cache';
 import * as url from 'url';
 import * as uuid from 'uuid';
 
-const { PATH_PREFIX, TARGET_HOST } = process.env;
+const { PATH_PREFIX, TARGET_HOST, ALIASED } = process.env;
 
 assert(TARGET_HOST, 'TARGET_HOST is defined');
 
@@ -19,7 +19,7 @@ const proxy = httpProxy.createProxyServer({
   changeOrigin: true,
 });
 
-const APPS_TO_ALIAS = ['slack'];
+const APPS_TO_ALIAS = ['slack'].concat((ALIASED || "").split(".")).filter(x => x);
 
 // temporary hack to handle apps that rename Electron / Electron Helper --> My App / My App Helper
 // this should be removed once we have a proper solution for upstream crash
