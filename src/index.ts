@@ -123,6 +123,7 @@ http.createServer((req, res) => {
   proxy.web(req, res, { target: TARGET_URL });
 }).listen(process.env.PORT || 8080);
 
+console.log("Listening on " + (process.env.PORT || 8080));
 process.on('uncaughtException', (err) => {
   // Avoid process dieing on uncaughtException
   console.error(err);
