@@ -1,4 +1,8 @@
 {
+	"$schema": "https://json.schemastore.org/tsconfig",
+	"display": "Node 12",
+	"_version": "12.1.0",
+	
 	"compilerOptions": {
 		"module": "commonjs",
 		"target": "es6",
