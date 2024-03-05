@@ -1,4 +1,4 @@
-name: Deploy CodeArtifactProxy
+name: Deploy Symbol Server
 on: 
   workflow_dispatch:
     inputs:
