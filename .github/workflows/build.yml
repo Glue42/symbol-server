@@ -78,7 +78,7 @@ jobs:
         with:
           ref: master
           repository: InteropIO/basehelmchart
-          path: '${{ github.event.inputs.component }}/helm'
+          path: 'helm'
           sparse-checkout: '*'
           sparse-checkout-cone-mode: false
       - uses: mamezou-tech/setup-helmfile@v1.3.0
@@ -93,5 +93,5 @@ jobs:
           export INSTALLED=${{ github.event.inputs.deploy }}
           export TARGET_HOST=${{ github.event.inputs.target_host }}
           export ALIASED=${{ github.event.inputs.aliased }}
-          export ALIASED=${{ github.event.inputs.aliased }}
-          helmfile -f ${{ github.event.inputs.component }}/helmfile.yaml apply
+          export URL=${{ github.event.inputs.url }}
+          helmfile -f helmfile.yaml apply

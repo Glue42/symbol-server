@@ -2,20 +2,16 @@ name: Deploy CodeArtifactProxy
 on: 
   workflow_dispatch:
     inputs:
-      namespace:
-        description: "Namespace in EKS to be deployed"
-        required: true
-        default: "utils"
-      image_tag:
-        description: "Image tag to be deployed"
-        required: true
-        default: "codeartifact-proxy-latest"
-      codeartifact_repo:
-        description: "Repo to serve"
+      url:
+        description: "First part of the URL"
         required: true
         default: ""
-      codeartifact_type:
-        description: "Type of repo"
+      target_host:
+        description: "Set TARGET_HOST OS Env."
+        required: true
+        default: ""
+      aliased:
+        description: "Set ALIASED OS Env."
         required: true
         default: ""
       deploy:
@@ -43,7 +39,7 @@ jobs:
         with:
           ref: master
           repository: InteropIO/basehelmchart
-          path: 'codeartifactproxy/helm'
+          path: 'helm'
           sparse-checkout: '*'
           sparse-checkout-cone-mode: false
       - uses: mamezou-tech/setup-helmfile@v1.3.0
@@ -54,9 +50,9 @@ jobs:
           export ALB_INSTANCES=${{ vars.ALB_INSTANCES }}
           export CI_REGISTRY=${{ vars.CI_REGISTRY }}
           export CERT_ARN=${{ vars.CERT_ARN }}
+          export IMAGE_TAG=${{ steps.short-sha.outputs.sha }}
           export INSTALLED=${{ github.event.inputs.deploy }}
-          export IMAGE_TAG=${{ github.event.inputs.image_tag }}
-          export CODEARTIFACT_REPO=${{ github.event.inputs.codeartifact_repo }}
-          export CODEARTIFACT_TYPE=${{ github.event.inputs.codeartifact_type }}
-          export COMPONENT="codeartifactproxy"
-          helmfile -f codeartifactproxy/helmfile.yaml apply
+          export TARGET_HOST=${{ github.event.inputs.target_host }}
+          export ALIASED=${{ github.event.inputs.aliased }}
+          export URL=${{ github.event.inputs.url }}
+          helmfile -f helmfile.yaml apply
