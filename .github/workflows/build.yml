@@ -1,0 +1,97 @@
+name: Build images
+on: 
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy after build - true | false"
+        required: true
+        default: "false"
+        type: choice
+        options:
+        - true
+        - false
+      url:
+        description: "First part of the URL"
+        required: true
+        default: ""
+      target_host:
+        description: "Set TARGET_HOST OS Env."
+        required: true
+        default: ""
+      aliased:
+        description: "Set ALIASED OS Env."
+        required: true
+        default: ""
+
+jobs:
+  build:
+    runs-on: 
+      - self-hosted
+      - Linux
+      - X64
+      - eks-dev
+      - build
+    name: Build image
+    steps:
+      - uses: actions/checkout@v4
+      - uses: benjlevesque/short-sha@v2.2
+        id: short-sha
+        with:
+          length: 6
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to ECR
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip 1> /dev/null
+          sudo ./aws/install
+          aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{vars.CI_REGISTRY}}
+          rm -rf aws*
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{vars.CI_REGISTRY}}/${{ github.event.repository.name }}/:latest
+            ${{vars.CI_REGISTRY}}/${{ github.event.repository.name }}/:${{ steps.short-sha.outputs.sha }}
+          provenance: false
+  deploy:
+    runs-on: 
+      - self-hosted
+      - Linux
+      - X64
+      - eks-dev
+      - deploy
+    environment: dev
+    name: Deploy
+    needs: build
+    if: ${{ ( inputs.deploy == 'true' ) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: benjlevesque/short-sha@v2.2
+        id: short-sha
+        with:
+          length: 6
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          repository: InteropIO/basehelmchart
+          path: '${{ github.event.inputs.component }}/helm'
+          sparse-checkout: '*'
+          sparse-checkout-cone-mode: false
+      - uses: mamezou-tech/setup-helmfile@v1.3.0
+      - name: Deploy
+        run: |
+          export PROJECT_NAME=${{ github.event.repository.name }}
+          export NAMESPACE=${{ github.event.inputs.namespace }}
+          export ALB_INSTANCES=${{ vars.ALB_INSTANCES }}
+          export CI_REGISTRY=${{ vars.CI_REGISTRY }}
+          export CERT_ARN=${{ vars.CERT_ARN }}
+          export IMAGE_TAG=${{ steps.short-sha.outputs.sha }}
+          export INSTALLED=${{ github.event.inputs.deploy }}
+          export TARGET_HOST=${{ github.event.inputs.target_host }}
+          export ALIASED=${{ github.event.inputs.aliased }}
+          export ALIASED=${{ github.event.inputs.aliased }}
+          helmfile -f ${{ github.event.inputs.component }}/helmfile.yaml apply

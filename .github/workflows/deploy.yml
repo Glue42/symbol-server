@@ -1,0 +1,62 @@
+name: Deploy CodeArtifactProxy
+on: 
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Namespace in EKS to be deployed"
+        required: true
+        default: "utils"
+      image_tag:
+        description: "Image tag to be deployed"
+        required: true
+        default: "codeartifact-proxy-latest"
+      codeartifact_repo:
+        description: "Repo to serve"
+        required: true
+        default: ""
+      codeartifact_type:
+        description: "Type of repo"
+        required: true
+        default: ""
+      deploy:
+        description: "Deployed - true | false"
+        required: true
+        default: "false"
+        type: choice
+        options:
+        - true
+        - false
+
+jobs:
+  deploy:
+    runs-on: 
+      - self-hosted
+      - Linux
+      - X64
+      - eks-dev
+      - deploy
+    environment: dev
+    name: Deploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          repository: InteropIO/basehelmchart
+          path: 'codeartifactproxy/helm'
+          sparse-checkout: '*'
+          sparse-checkout-cone-mode: false
+      - uses: mamezou-tech/setup-helmfile@v1.3.0
+      - name: Deploy
+        run: |
+          export PROJECT_NAME=${{ github.event.repository.name }}
+          export NAMESPACE=${{ github.event.inputs.namespace }}
+          export ALB_INSTANCES=${{ vars.ALB_INSTANCES }}
+          export CI_REGISTRY=${{ vars.CI_REGISTRY }}
+          export CERT_ARN=${{ vars.CERT_ARN }}
+          export INSTALLED=${{ github.event.inputs.deploy }}
+          export IMAGE_TAG=${{ github.event.inputs.image_tag }}
+          export CODEARTIFACT_REPO=${{ github.event.inputs.codeartifact_repo }}
+          export CODEARTIFACT_TYPE=${{ github.event.inputs.codeartifact_type }}
+          export COMPONENT="codeartifactproxy"
+          helmfile -f codeartifactproxy/helmfile.yaml apply

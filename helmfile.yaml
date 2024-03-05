@@ -1,0 +1,78 @@
+environments:
+  default:
+  test:
+  development:
+  production:
+---
+releases:
+  - name: symbolserver-{{ requiredEnv "URL" }}
+    namespace: symbol-servers
+    chart: helm/
+    installed:  {{ requiredEnv "INSTALLED" }}
+    historyMax: 3
+    values:
+      - kind: Deployment
+      - fullnameOverride: "symbolserver-{{ requiredEnv "URL" }}"
+      - serviceAccount:
+          create: false
+      - deploymentAnnotations:
+          configmap.reloader.stakater.com/reload: "awsconfig"
+      - replicaCount: 1
+      - resources:
+          requests:
+            cpu: 50m
+            memory: 48Mi
+          limits:
+            cpu: 250m
+            memory: 128Mi
+      - image:
+          repository: {{ requiredEnv "CI_REGISTRY" }}/{{ requiredEnv "PROJECT_NAME" }}
+          pullPolicy: IfNotPresent
+          tag: {{ env "IMAGE_TAG" }}
+          env:
+            - name: TARGET_HOST
+              value: {{ requiredEnv "TARGET_HOST" }}
+            - name: ALIASED
+              value: {{ requiredEnv "ALIASED" }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+      - service:
+          enabled: true
+          type: NodePort
+          ports:
+            - name: http
+              targetPort: 8080
+              protocol: TCP
+              port: 80
+      - ingress:
+          enabled: true
+          annotations:
+            kubernetes.io/ingress.class: alb
+            alb.ingress.kubernetes.io/scheme: internal
+            alb.ingress.kubernetes.io/certificate-arn: {{ requiredEnv "CERT_ARN" }}
+            alb.ingress.kubernetes.io/group.name: int-{{ mod (randNumeric 1) ( requiredEnv "ALB_INSTANCES" ) }}
+            alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}, {"HTTP":80}]'
+            alb.ingress.kubernetes.io/ssl-redirect: "443"
+            alb.ingress.kubernetes.io/healthcheck-path: /tick42-crm
+            alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+            alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS-1-1-2017-01
+            alb.ingress.kubernetes.io/load-balancer-attributes: routing.http.drop_invalid_header_fields.enabled=true
+            alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600,slow_start.duration_seconds=30,deregistration_delay.timeout_seconds=60
+          hosts:
+            - host: {{ requiredEnv "URL" }}.interop.io
+              paths:
+                - path: /*
+                  pathType: ImplementationSpecific
+                  backend: 
+                    service:
+                      name: symbolserver-{{ requiredEnv "URL" }}
+                      port:
+                        number: 80
+      - nodeSelector:
+          kubernetes.io/arch: "amd64"
+      - podAnnotations:
+          prometheus.io/scrape: "true"
+          kubernetes.io/egress-bandwidth: 200M
+          kubernetes.io/ingress-bandwidth: 200M
